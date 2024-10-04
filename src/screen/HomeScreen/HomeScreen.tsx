@@ -28,7 +28,6 @@ interface FormUser {
 
 // Interface - Opinion
 export interface Opinion {
- 
   email: string;
   opinion: string;
 }
@@ -50,8 +49,7 @@ export const HomeScreen = () => {
   const navigation = useNavigation();
   const [formUser, setFormUser] = useState<FormUser>({ name: "" });
   const [userData, setUserData] = useState<firebase.User | null>(null);
-  const [opinions, setOpinions] = useState<Opinion[]>([]);
-  const [userOpinion, setUserOpinion] = useState<Opinion | null>(null); // Estado para la opinión del usuario
+  const [opinions, setOpinions] = useState<Opinion[]>([]); // Almacenamos todas las opiniones del usuario
 
   const [showModalProfile, setShowModalProfile] = useState<boolean>(false);
   const [showModalNewOpinion, setShowModalNewOpinion] = useState<boolean>(false);
@@ -59,7 +57,7 @@ export const HomeScreen = () => {
   useEffect(() => {
     setUserData(auth.currentUser);
     setFormUser({ name: auth.currentUser?.displayName ?? "" });
-    getAllOptions();
+    getAllOpinions();
   }, []);
 
   const handleSignOut = async () => {
@@ -92,36 +90,23 @@ export const HomeScreen = () => {
     setShowModalProfile(false);
   };
 
-  // Función para obtener todas las opiniones
-  
-    // Función para obtener todas las opiniones
-const getAllOptions = () => {
-  const dbRef = ref(dbRealTime, 'opinions/' + auth.currentUser?.uid);
-  onValue(dbRef, (snapshot) => {
-    const data = snapshot.val();
-    if (!data) {
-      setUserOpinion(null); // Si no hay datos, asegúrate de que userOpinion sea nulo
-      return;
-    }
-    
-    const getKeys = Object.keys(data);
-    const listOpinions: Opinion[] = [];
-    getKeys.forEach((key) => {
-      const { email, opinion } = data[key]; // Desestructuramos solo email y opinion
-      listOpinions.push({ email, opinion }); // Agregamos solo email y opinion
-    });
-    
-    setOpinions(listOpinions);
-    
-    // Establecer userOpinion si hay al menos una opinión
-    if (listOpinions.length > 0) {
-      setUserOpinion(listOpinions[0]); // O puedes establecer el índice según la lógica que necesites
-    } else {
-      setUserOpinion(null); // No hay opiniones
-    }
-  });
-};
+  // Función para obtener todas las opiniones del usuario
+  const getAllOpinions = () => {
+    const dbRef = ref(dbRealTime, 'opinions/' + auth.currentUser?.uid);
+    onValue(dbRef, (snapshot) => {
+      const data = snapshot.val();
+      if (!data) {
+        setOpinions([]); // Si no hay datos, limpiar el array de opiniones
+        return;
+      }
 
+      const listOpinions: Opinion[] = Object.keys(data).map((key) => {
+        const { email, opinion } = data[key];
+        return { email, opinion };
+      });
+      setOpinions(listOpinions); // Establecer las opiniones en el estado
+    });
+  };
 
   return (
     <>
@@ -147,12 +132,15 @@ const getAllOptions = () => {
             style={styles.editIcon}
           />
         </View>
+
         <View style={styles.rootBook}>
           <Text style={styles.bookListTitle} variant="bodyLarge">
-            Tu Opinión
+            Tus Opiniones
           </Text>
-          {userOpinion ? ( // Muestra la opinión del usuario actual
-            <OpinionCardComponent opinion={userOpinion} />
+          {opinions.length > 0 ? ( // Mostrar todas las opiniones en tarjetas
+            opinions.map((opinion, index) => (
+              <OpinionCardComponent key={index} opinion={opinion} />
+            ))
           ) : (
             <Text>No tienes opiniones registradas.</Text> // Mensaje si no hay opiniones
           )}
